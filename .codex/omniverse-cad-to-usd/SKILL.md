@@ -1,7 +1,7 @@
 ---
 name: omniverse-cad-to-usd
 description: Convert supported CAD files to OpenUSD with the standalone usd-convert-cad Python wheel.
-version: "0.2.0"
+version: "0.3.0"
 author: NVIDIA Omniverse
 tags:
   - omniverse
@@ -45,6 +45,12 @@ Do not use this skill to substitute mesh converters, hand-authored USD, or unrel
 
 This skill no longer installs Omniverse Kit or pulls a CAD converter extension from the Kit registry. Conversion now runs entirely inside the self-contained `usd-convert-cad` wheel published to PyPI. The wheel bundles its own OpenUSD and CAD conversion runtime, so there is no Kit app, no registry pull, no `config.env`, and no EULA prompt.
 
+## Tested Wheel Version
+
+This skill was tested with `usd-convert-cad==0.3.0` on Python 3.12. If another
+wheel version is installed, run `usd-convert-cad --help` and verify the installed
+package version before using options or behavior that may have changed.
+
 ## Instructions
 
 1. Confirm the source file exists and detect the file type by extension.
@@ -53,7 +59,7 @@ This skill no longer installs Omniverse Kit or pulls a CAD converter extension f
    - Create: `python3.12 -m venv .venv`, or `py -3.12 -m venv .venv` on Windows.
    - Activate: `.venv\Scripts\Activate.ps1` (PowerShell), `.venv\Scripts\activate.bat` (cmd.exe), or `source .venv/bin/activate` (bash). Or skip activation and call the interpreter directly: `.venv\Scripts\python.exe` (Windows) or `.venv/bin/python` (Linux).
 4. Ensure the wheel is installed in that environment. Probe with `python -c "import usd_convert_cad"` or `usd-convert-cad --help`. If it is missing, install it with `python -m pip install usd-convert-cad`.
-5. Run the conversion with the `usd-convert-cad` console command (or `python -m usd_convert_cad`), passing `-i <input>` and `-o <output>`. Choose the output extension (`.usd`, `.usda`, or `.usdc`).
+5. Run the conversion with the `usd-convert-cad` console command (or `python -m usd_convert_cad`), passing `-i <input>` and `-o <output>`. Choose the output extension (`.usd`, `.usda`, `.usdc`, or `.usdz`).
 6. Treat the process exit code as the authoritative result: `0` means success, non-zero means failure. On success the tool prints `Successfully converted: <output>`; confirm the output file exists.
 7. On failure, read stderr. The tool prints `Error: conversion failed with code <n>` followed by the converter error message.
 8. For option-discovery questions, run `usd-convert-cad --help` to read the documented options for the installed wheel version before recommending overrides.
@@ -66,8 +72,15 @@ Supported export formats:
 - `.usd`
 - `.usda`
 - `.usdc`
+- `.usdz`
 
-The output path's extension determines the USD file format. USDZ (`.usdz`) export is not supported yet.
+The output path's extension determines the USD file format. For `.usdz`, the
+CLI converts to a temporary `{stem}.usdc` layer in an isolated staging
+directory and packages it with OpenUSD. USDZ requires monolithic conversion
+(`--composition-style none`, the default). Packaging replaces the final
+`.usdz` only after a successful package is created. If
+`--material-type preview-surface-omnipbr` is selected, USDZ export switches to
+`preview-surface` because OmniPBR materials are not packageable.
 
 Recommended external caller contract:
 
@@ -172,6 +185,7 @@ Apply documented converter options:
 usd-convert-cad -i asset.jt -o asset.usdc --tess-lod 4
 usd-convert-cad -i assembly.step -o assembly.usdc --no-materials
 usd-convert-cad -i assembly.step -o assembly.usdc --filter-style hide --convert-metadata
+usd-convert-cad -i assembly.sldasm -o assembly.usdc --read-constraints
 ```
 
 ## Shell Invocation
@@ -198,16 +212,17 @@ The wheel builds a converter `Parameters` object from the CLI flags and converts
 | `--fast-surface-curvatures` | Disable accurate surface curvature computation. |
 | `--no-normals` | Do not author normals. |
 | `--no-materials` | Do not author materials. |
-| `--material-type <none\|preview-surface\|preview-surface-omnipbr>` | Material output type. |
+| `--material-type <none\|preview-surface\|preview-surface-omnipbr\|preview-surface-materialx>` | Material output type. MaterialX authors OpenPBR for the `mtlx` render context and includes a Preview Surface fallback. |
 | `--up-axis <file\|y\|z>` | Override output stage up-axis. |
 | `--instancing-style <none\|reference\|instanceable-reference>` | Instancing style for repeated components. |
 | `--composition-style <none\|reference\|payload>` | Composition style for external sub-assemblies and parts. |
 | `--filter-style <none\|omit\|hide\|deactivate>` | How hidden CAD elements are converted. |
 | `--load-hidden` | Load hidden CAD elements before filtering. |
 | `--global-xforms` | Author global transforms instead of local transforms. |
-| `--convert-curves` | Convert wire/curve geometry. |
+| `--convert-curves` | Convert curve and wire geometry—both 3D and 2D (including DWG/DXF model-space linework)—to USD BasisCurves. See `LIMITATIONS.md` for 2D conversion limitations. |
 | `--convert-metadata` | Convert CAD metadata to USD custom attributes. |
 | `--no-dedup` | Disable mesh and material deduplication. |
+| `--read-constraints` | Export CATIA V5, NX, and SolidWorks `Fix`, CATIA V5 `Fix Together`, NX `Bond`, and SolidWorks `Lock` mate as USD Physics fixed joints that preserve world or relative poses. |
 | `--convert-physics-data` | Author physical properties on USD prims. |
 | `--physics-accuracy-level <0.0-1.0>` | Physical property accuracy. |
 | `--physics-use-geometry-on-ribrep` | Use geometry instead of topology for RiBRep physical properties. |

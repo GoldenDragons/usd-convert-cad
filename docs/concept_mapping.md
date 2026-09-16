@@ -74,8 +74,9 @@ The current Omniverse CAD Converter does not preserve:
   may be read while processing faces, but `primvars:st` is not authored.
 - Point sets, direction items, coordinate systems, or plane representation
   items as dedicated OpenUSD geometry prims.
-- CAD assembly constraints as `UsdPhysics` joints, collision APIs, rigid-body
-  APIs, or custom constraint attributes.
+- CAD assembly constraints other than the supported fixed-constraint mappings.
+  The converter does not apply collision APIs, rigid-body APIs, or custom
+  constraint attributes.
 - Visible PMI geometry or editable semantic PMI as dedicated USD annotation
   prims.
 - Revit Rooms or Spaces as standalone spatial prims.
@@ -136,7 +137,7 @@ and important limits.
 | IFC BIM relationships | `omni:hoops:metadata:bim:*` USD relationships | `convertMetadata` and HOOPS IFC relationship data | IFC connectivity can be traversed with USD relationship APIs when matching GlobalIds are exported. |
 | Physical properties | `omni:hoops:physics:*` custom attributes on authored RI prims | `convertPhysicsData`, `physicsAccuracyLevel`, `physicsUseGeometryOnRiBRep` | Mass-property-like values can be queried without implying USD physics behavior. |
 | Hidden state | Invisible, inactive, omitted, or emitted based on filter mode | `filterStyle`, `omitHiddenOnLoad` | Consumers can choose whether hidden source branches are present, hidden, inactive, or absent. |
-| CAD assembly constraints | Not emitted | None currently | Constraint-to-`UsdPhysics` mapping is proposal-only. |
+| CATIA V5, NX, and SolidWorks `Fix`; CATIA V5 `Fix Together`; NX `Bond`; SolidWorks `Lock` mate | `UsdPhysicsFixedJoint` prims | `readConstraints` | `Fix` is world-anchored; the other listed constraints connect components and retain their relative pose. |
 
 ## Current Converter Behavior
 
@@ -301,9 +302,10 @@ then has no generated material-network effect.
 
 | Effective Material Type | Output |
 | --- | --- |
-| `eNone` | No generated `UsdShadeMaterial` network. Display color and opacity primvars can be authored from source material/color data. Raw `omni:hoops:material:*` attributes are still authored when material assignments exist. |
+| `eNone` | No source-material network. A root-bound `DefaultDisplayColorMaterial` reads display-color and display-opacity primvars. Raw `omni:hoops:material:*` attributes are still authored when material assignments exist. |
 | `ePreviewSurface` | USD Preview Surface materials are generated and bound. Raw `omni:hoops:material:*` attributes are also authored on the mesh or subset binding target. |
 | `ePreviewSurface_OmniPBR` | OmniPBR materials are generated with Preview Surface support and bound. Raw `omni:hoops:material:*` attributes are also authored on the mesh or subset binding target. |
+| `ePreviewSurface_MaterialX` | OpenPBR MaterialX materials are generated for the `mtlx` render context. USD Preview Surface fallback networks are also generated and bound. |
 
 The converter deduplicates generated material prims by material parameters in a
 global materials scope under the default prim. For prototype or composed
@@ -331,11 +333,15 @@ Current raw material attributes are:
 | `omni:hoops:material:diffuseColor` | `color3f` | Diffuse or display color selected from HOOPS cascaded attributes. |
 | `omni:hoops:material:opacity` | `float` | Normalized opacity. |
 
-When generated materials are disabled, display colors and opacity are authored
-as primvars:
+Display colors and opacity are authored as primvars alongside generated
+materials. They are also authored when generated materials are disabled:
 
 - Constant interpolation when one value applies to the mesh.
 - Uniform indexed interpolation when values vary per source style assignment.
+
+When generated materials are disabled, the converter binds one
+`DefaultDisplayColorMaterial` at the default prim. Its Preview Surface shader
+reads `displayColor` and `displayOpacity` through primvar readers.
 
 ### Metadata Attributes
 
@@ -427,6 +433,37 @@ default.
 geometry for B-rep physical-property computation when available. It does not
 cause native B-rep geometry to be authored to USD.
 
+### Assembly Constraints and USD Physics Joints
+
+When `readConstraints=true`, the converter loads supported native assembly
+constraints and authors USD Physics fixed joints. The option defaults to
+`false`, making constraint conversion an explicit opt-in capability.
+
+The source-CAD-to-USD mapping is:
+
+| Source file format | Source constraint | OpenUSD result |
+| --- | --- | --- |
+| CATIA V5 (`.CATProduct`) | `Fix` | One world-anchored `UsdPhysicsFixedJoint` per constrained component. The first body relationship is omitted to represent the static world, and the second targets the component. |
+| CATIA V5 (`.CATProduct`) | `Fix Together` | Component-to-component `UsdPhysicsFixedJoint` prims that preserve the authored relative pose. A group of N resolved components produces N-1 joints. |
+| NX (`.prt`) | `Fix` | One world-anchored `UsdPhysicsFixedJoint` per constrained component. |
+| NX (`.prt`) | `Bond` | Component-to-component `UsdPhysicsFixedJoint` prims that preserve the authored relative pose. A group of N resolved components produces N-1 joints. |
+| SolidWorks (`.SLDASM`) | `Fix` | One world-anchored `UsdPhysicsFixedJoint` per constrained component. |
+| SolidWorks (`.SLDASM`) | `Lock` mate | Component-to-component `UsdPhysicsFixedJoint` prims that preserve the authored relative pose. A group of N resolved components produces N-1 joints. |
+
+The converter authors `localPos0`, `localRot0`, `localPos1`, and `localRot1` so
+the fixed joint preserves the component's world pose for CATIA V5, NX, and
+SolidWorks `Fix`, or the authored relative pose for CATIA V5 `Fix Together`, NX
+`Bond`, and SolidWorks `Lock` mate. Constraint sets are traversed recursively.
+Source constraint status is represented by `physics:jointEnabled`: OK status
+uses the enabled fallback, while other statuses author `false`. Joint body
+relationships target converted product-occurrence prims.
+Source constraint names are used for joint prim names, with display names
+preserved when USD identifier encoding changes the source name.
+
+`readConstraints` is independent of `convertPhysicsData`. The former authors
+USD Physics joint schemas; the latter computes mass-property-like values and
+authors them as `omni:hoops:physics:*` custom attributes.
+
 ### Visibility, Suppression, and Filtering
 
 Visibility comes from HOOPS graphics behavior, cascaded attributes, simplified
@@ -499,11 +536,12 @@ file-format arguments.
 | `omitHiddenOnLoad` | `true` default | With `filterStyle=eOmit`, requests hidden objects be skipped during HOOPS loading. |
 | `convertCurves` | `false` default | Enables visible curve and poly wire output as `UsdGeomBasisCurves`. |
 | `convertMetadata` | `false` default | Enables source metadata attributes and IFC BIM relationship export support. |
+| `readConstraints` | `false` default | Exports CATIA V5, NX, and SolidWorks `Fix`, CATIA V5 `Fix Together`, NX `Bond`, and SolidWorks `Lock` mate as USD Physics fixed joints. |
 | `convertPhysicsData` | `false` default | Enables physical-property custom attributes on authored B-rep or poly B-rep RI prims. |
 | `physicsAccuracyLevel` | `0.0` through `1.0`, default `0.99` | Sets HOOPS physical-property computation accuracy. |
 | `physicsUseGeometryOnRiBRep` | `false` default | Requests exact B-rep geometry for physical-property computation when available. |
 | `useMaterials` | `true` default | Enables generated material networks when `materialType` is not `eNone`; `false` forces effective material type to `eNone`. |
-| `materialType` | `eNone` (0), `ePreviewSurface` (1, default), `ePreviewSurface_OmniPBR` (2) | Chooses generated material network type. Invalid values fall back to `ePreviewSurface`. |
+| `materialType` | `eNone` (0), `ePreviewSurface` (1, default), `ePreviewSurface_OmniPBR` (2), `ePreviewSurface_MaterialX` (3) | Chooses the generated material network type. MaterialX output includes a Preview Surface fallback. Invalid values fall back to `ePreviewSurface`. |
 | `dedup` | `true` default | Welds repeated position/normal pairs and reindexes mesh topology. |
 | `tessLOD` | `0` through `4`, default `2` | Chooses HOOPS tessellation level of detail for import and fallback tessellation. |
 | `accurateTessellation` | `false` default | Requests analysis-oriented tessellation rather than visualization-oriented tessellation. |
@@ -728,20 +766,3 @@ Current converter type mapping:
 The converter authors USD attributes, not custom USD metadata fields. This is
 intentional because attributes are easier to inspect in USD editors and can
 carry variability and display metadata.
-
-### Appendix D: Constraint Concepts
-
-HOOPS Exchange SDK headers include assembly constraint concepts such as fixed,
-contact, distance, angle, perpendicular, and parallel constraints. The current
-converter does not traverse or author CAD assembly constraints into USD.
-
-Do not claim current support for:
-
-- `UsdPhysicsFixedJoint`.
-- `UsdPhysicsDistanceJoint`.
-- `UsdPhysicsRevoluteJoint`.
-- `UsdPhysicsRigidBodyAPI`.
-- `UsdPhysicsCollisionAPI`.
-- Constraint custom attributes.
-
-Potential constraint-to-USD mappings remain future/proposed schema work.

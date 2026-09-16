@@ -20,8 +20,8 @@ between releases.
 
 | Component | Version | License | Copyright / Notes |
 | --- | --- | --- | --- |
-| [HOOPS Exchange SDK](https://www.techsoft3d.com/products/hoops/exchange/) | 2026.5.0 | Commercial / Proprietary; licensed by NVIDIA from Tech Soft 3D | Core CAD import engine. The applicable SDK open-source and other third-party acknowledgements are reproduced below. |
-| [NVIDIA OpenUSD Exchange SDK](https://github.com/NVIDIA-Omniverse/usd-exchange) | 2.3 | [Apache-2.0](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/LICENSE.md) | Open-source OpenUSD authoring layer. |
+| [HOOPS Exchange SDK](https://www.techsoft3d.com/products/hoops/exchange/) | 2026.7.0 | Commercial / Proprietary; licensed by NVIDIA from Tech Soft 3D | Core CAD import engine. The applicable SDK open-source and other third-party acknowledgements are reproduced below. |
+| [NVIDIA OpenUSD Exchange SDK](https://github.com/NVIDIA-Omniverse/usd-exchange) | 3.0 | [Apache-2.0](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/LICENSE.md) | Open-source OpenUSD authoring layer. |
 | [OpenUSD (pxr)](https://openusd.org/) | 25.11 | [Tomorrow Open Source Technology License 1.0](https://github.com/PixarAnimationStudios/OpenUSD/blob/v25.11/LICENSE.txt) | Redistributed in the Python wheel (`pxr` runtime) and linked by the native library. Provided via the OpenUSD Exchange SDK. |
 | [fmt](https://github.com/fmtlib/fmt) | bundled with USD Exchange | MIT (with binary-redistribution exception) | License text is reproduced below. |
 | [pybind11](https://github.com/pybind/pybind11) | bundled with USD Exchange | BSD-3-Clause | Python bindings; license text is reproduced below. |
@@ -118,7 +118,7 @@ distribution that HOOPS Exchange embeds.
 
 ## NVIDIA Omniverse CAD Converter dependencies
 
-### HOOPS Exchange SDK 2026.5.0 — Proprietary acknowledgment
+### HOOPS Exchange SDK 2026.7.0 — Proprietary acknowledgment
 
 The Omniverse CAD Converter uses components of the proprietary Tech Soft 3D
 HOOPS Exchange SDK under NVIDIA's commercial license from Tech Soft 3D. HOOPS
@@ -127,7 +127,7 @@ Tech Soft 3D publishes the current open-source and other third-party
 acknowledgments for HOOPS Exchange at
 <https://docs.techsoft3d.com/hoops/exchange/start/acknowledgments.html>.
 
-### NVIDIA OpenUSD Exchange SDK 2.3
+### NVIDIA OpenUSD Exchange SDK 3.0
 
 The OpenUSD Exchange SDK is open-source software licensed under the
 [Apache License 2.0](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/LICENSE.md).

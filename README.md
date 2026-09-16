@@ -6,8 +6,14 @@
 The **Omniverse CAD Converter**, distributed using the `usd-convert-cad`
 package and command-line identifier, converts supported CAD files to OpenUSD.
 
-This repository contains the Python package sources, agent skill, and
-documentation for the Omniverse CAD Converter.
+This repository contains the NVIDIA Agent Skill and documentation for the
+Omniverse CAD Converter. The converter is distributed separately through the
+`usd-convert-cad` Python wheel.
+
+The documentation and agent skill in this repository were tested with
+`usd-convert-cad==0.3.0` on Python 3.12. Newer wheel versions may add or change
+options; check `usd-convert-cad --help` and the installed package version before
+relying on behavior not documented here.
 
 This is a Skillhub-style repository for agent-assisted CAD conversion workflows.
 It contains the instructions, documentation, and workflow contract that AI agents
@@ -25,10 +31,8 @@ Key repository areas:
 - `skills/omniverse-cad-to-usd` - canonical NVIDIA Agent Skill for CAD-to-USD
   conversion.
 - `docs` - CAD-to-OpenUSD concept mapping and related documentation.
-- `source/python` - Python package notes and wheel metadata used by the
-  installable package.
 - `LIMITATIONS.md` - known package and converter limitations.
-- `CONTRIBUTING.md` - contribution requirements and supported-format update
+- `CONTRIBUTING.md` - contribution policy and supported-format update
   policy.
 
 ## Getting Started
@@ -102,15 +106,13 @@ skill under `skills/omniverse-cad-to-usd` carries its Apache-2.0 and CC-BY-4.0
 license text in `skills/omniverse-cad-to-usd/LICENSE.md`. See
 `THIRD_PARTY_NOTICES.md` for third-party notices.
 
-External contributions are accepted only with Developer Certificate of Origin
-(DCO) sign-off. See `CONTRIBUTING.md` for contribution requirements and the full
-DCO text.
+This project is not currently accepting external contributions or pull requests.
+See `CONTRIBUTING.md` for the contribution policy and issue-reporting guidance.
 
 ## Repository Layout
 
 ```text
 usd-convert-cad/
-├── source/python/                    # Python package and wheel sources
 ├── skills/
 │   └── omniverse-cad-to-usd/
 │       └── SKILL.md        # canonical skill source
@@ -120,7 +122,6 @@ usd-convert-cad/
 ├── .codex  -> skills                      # symlink
 ├── docs/
 │   └── concept_mapping.md
-├── .gitignore
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── LICENSE.md
@@ -130,7 +131,13 @@ usd-convert-cad/
 ```
 
 The output path determines the USD file format. Supported output extensions are
-`.usd`, `.usda`, and `.usdc`. USDZ (`.usdz`) export is not supported.
+`.usd`, `.usda`, `.usdc`, and `.usdz`. USDZ export converts to a temporary
+`{stem}.usdc` layer in an isolated staging directory, then packages it with
+OpenUSD. USDZ requires monolithic conversion (`--composition-style none`, the
+default). Packaging writes to a temporary archive and replaces the final
+`.usdz` only on success. If `--material-type preview-surface-omnipbr` is set,
+USDZ export switches to `preview-surface` because OmniPBR materials are not
+packageable.
 
 The command returns exit code `0` on success and prints
 `Successfully converted: <output>`. On failure, it returns a non-zero exit code
@@ -141,14 +148,18 @@ Common conversion options include `--tess-lod`, `--revit-lod`,
 `--accurate-tessellation`, `--convert-curves`, `--convert-metadata`,
 `--no-dedup`, `--no-normals`, `--no-materials`, `--material-type`,
 `--up-axis`, `--instancing-style`, `--composition-style`, `--filter-style`,
-`--load-hidden`, `--progress`, `--convert-physics-data`, and
-`--view-layer-name`.
+`--load-hidden`, `--progress`, `--convert-physics-data`, `--read-constraints`,
+and `--view-layer-name`.
+
+Use `--material-type preview-surface-materialx` to author OpenPBR MaterialX
+with a USD Preview Surface fallback.
 
 Common examples:
 
 ```bash
-# Choose output format by extension: .usd, .usda, or .usdc.
+# Choose output format by extension: .usd, .usda, .usdc, or .usdz.
 usd-convert-cad -i assembly.step -o assembly.usdc
+usd-convert-cad -i assembly.step -o assembly.usdz
 
 # Export geometry without materials.
 usd-convert-cad -i assembly.step -o assembly.usda --no-materials
@@ -156,8 +167,15 @@ usd-convert-cad -i assembly.step -o assembly.usda --no-materials
 # Convert metadata and keep hidden CAD elements as hidden USD prims.
 usd-convert-cad -i plant.ifc -o plant.usdc --convert-metadata --filter-style hide
 
+# Convert model-space geometry from supported DWG/DXF files—including 2D linework and 3D curves—to USD BasisCurves.
+usd-convert-cad -i drawing.dwg -o drawing.usdc --convert-curves
+
 # Increase tessellation level of detail.
 usd-convert-cad -i part.jt -o part.usdc --tess-lod 4
+
+# Export CATIA V5/NX/SolidWorks Fix, CATIA V5 Fix Together, NX Bond,
+# or SolidWorks Lock mate constraints as USD Physics fixed joints.
+usd-convert-cad -i assembly.sldasm -o assembly.usdc --read-constraints
 
 # Convert a CAD view layer or simplified representation by name.
 usd-convert-cad -i assembly.asm -o assembly.usdc --view-layer-name "Manufacturing"
@@ -198,35 +216,17 @@ Known limitations are documented in `LIMITATIONS.md`.
 - Skill version: `skills/omniverse-cad-to-usd/SKILL.md`
 - Package version source: `VERSION`
 
-## Contribution Guidelines
-
-Use GitHub pull requests for skill, documentation, package metadata, and
-supported-format updates. Keep changes focused and document user-visible
-behavior.
-
-Before opening a pull request:
-
-- Verify the wheel installs in Python 3.12.
-- Run `usd-convert-cad --help`.
-- Convert a small shareable CAD asset when changing documented commands,
-  options, formats, or workflow behavior.
-- Update `README.md` and `skills/omniverse-cad-to-usd/SKILL.md` together when
-  behavior, options, supported formats, or external workflow contracts change.
-
-External contributions require Developer Certificate of Origin (DCO) sign-off.
-See `CONTRIBUTING.md` for contribution requirements and the full DCO text.
-
-### Governance & Maintainers
+## Governance & Maintainers
 
 This project is maintained by NVIDIA. Project governance, maintainers, and
 triage policy are managed by the repository owners.
 
-### Security
+## Security
 
 - Vulnerability disclosure: `SECURITY.md`
 - Do not file public issues for security reports.
 
-### Support
+## Support
 
 - Level: Community support through repository issues.
 - How to get help: Open a GitHub issue with environment details, input asset
@@ -237,12 +237,12 @@ triage policy are managed by the repository owners.
 
 ## Community
 
-Use repository issues and pull requests for project communication.
+Use repository issues for project communication. External pull requests are not
+accepted.
 
 ## References
 
 - Agent skill: `skills/omniverse-cad-to-usd/SKILL.md`
-- Python package notes: `source/python/README.md`
 - Concept mapping: `docs/concept_mapping.md`
 - Known limitations: `LIMITATIONS.md`
 - OpenUSD: https://openusd.org/
