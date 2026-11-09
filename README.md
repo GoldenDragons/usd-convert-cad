@@ -1,4 +1,72 @@
-# usd-convert-cad
+# CAD → USD 中文批量转换器（Windows 便携桌面版）
+
+本版本由 [GoldenDragons](https://github.com/GoldenDragons) 基于 NVIDIA 的
+[usd-convert-cad](https://github.com/NVIDIA-Omniverse/usd-convert-cad) 扩展，
+在独立命令行转换器之上提供中文 Windows 图形界面和可复制使用的便携程序。
+桌面程序版本：**v1.0.0**；底层转换器版本：**0.3.0**。
+
+## 本版本的重点
+
+- **中文图形界面**：无需手写命令，选择文件即可开始转换。
+- **多文件批量处理**：Ctrl/Shift 多选、继续添加、移除选中或清空队列，逐个转换并显示各文件结果。
+- **24 项转换参数及中文说明**：通过勾选添加或移除参数，设置精度、材质、实例、装配组织、元数据、隐藏元素、物理属性等；未启用的参数保留转换器默认行为。
+- **自由选择输出位置和格式**：支持 `.usd`、`.usda`、`.usdc`、`.usdz`，输出目录留空时保存到各源文件目录。
+- **保护已有文件**：重名自动增加编号，不覆盖已有输出。
+- **实时日志与批次进度**：显示转换器日志，可取消当前批次。
+- **Windows 便携发布包**：EXE、Python、CAD 转换运行时和 OpenUSD 插件随包提供，目标电脑无需安装 Python 或 Omniverse Kit，运行时无需下载安装依赖。
+- **可自行重建**：保留桌面源码、回归测试和一键打包脚本。
+
+## 下载与使用
+
+前往本仓库的 [Releases](https://github.com/GoldenDragons/usd-convert-cad/releases) 下载
+`CADConverter-Windows-x64.zip`，**完整解压后双击 `CADConverter.exe`**。
+
+> 必须保留整个 `CADConverter` 文件夹中的 `_internal` 和 `runtime`，不能只复制 EXE。
+> 目标平台为 Windows 10/11 x64；不支持 32 位 Windows，也不承诺任意系统、CAD 格式或文件版本都可转换。
+
+1. 点击“添加文件”，按 Ctrl/Shift 多选 CAD 或其他受支持的模型文件。
+2. 选择输出目录和格式；大型模型可优先使用 USDC。
+3. 勾选需要的参数并设置值，参考每项下方中文说明。
+4. 点击“开始批量转换”，在队列和实时日志中查看结果。
+
+装配模型需要保留引用的零件及原有相对路径。取消或转换失败可能留下不完整输出，
+应根据日志检查。CAD 源文件的完整 PBR 材质不保证保留；具体限制见
+[LIMITATIONS.md](LIMITATIONS.md)。本程序提供文件转换功能，不包含三维预览器。
+
+## 源码运行与打包
+
+开发环境：Windows x64、Python 3.12。已部署环境可双击 `Start-GUI.cmd`。
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\python.exe desktop\main.py
+
+# 生成 EXE、完整运行时及 ZIP，输出到 dist/时间戳目录。
+.\Build-Portable.cmd
+
+# 回归检查。
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+主要新增文件：`desktop/app.py`（中文界面）、`desktop/core.py`（参数与批量输出规划）、
+`tools/build_portable.py`（便携包构建）、`tests/test_desktop_core.py`（回归检查）。
+详情见 [桌面版说明](DESKTOP-README.md)。
+
+验证范围：5 项回归检查通过；源码界面转换和便携运行时 STL → USDZ 转换通过，
+已检查打包 EXE 能启动并显示中文界面。尚未完成其他电脑兼容性、全部 CAD 读取器、
+便携版完整鼠标操作流程和取消操作的实测。
+
+## 来源与许可证
+
+本版本新增中文界面、批量调度和便携构建流程，底层转换引擎仍由 NVIDIA 提供，
+并非重新实现 CAD 读取器。请保留 [LICENSE.md](LICENSE.md) 和
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；上游 NVIDIA 软件条款及第三方许可继续适用。
+公开本仓库不代表底层专有运行时改为开源许可证。
+
+---
+
+## 上游项目说明：usd-convert-cad
 
 <!-- SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
 <!-- SPDX-License-Identifier: Apache-2.0 AND CC-BY-4.0 -->

@@ -1,0 +1,9 @@
+.venv/
+.local-deployment/
+__pycache__/
+build/
+dist/
+*.spec
+.omx/
+# Local model inputs and conversion outputs are not source code.
+/a.usd
